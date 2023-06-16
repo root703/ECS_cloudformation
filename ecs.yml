@@ -8,18 +8,23 @@ Parameters:
     Description: Environment name (dev, test, prod)
   ClusterName:
     Type: String
+    Default: dev
     Description: Name of the ECS cluster
   TaskDefinitionName:
     Type: String
+    Default: dev
     Description: Name of the ECS task definition
   ServiceName:
     Type: String
+    Default: dev
     Description: Name of the ECS service
   ContainerName:
     Type: String
+    Default: dev
     Description: Name of the container
   ECRImageArn:
     Type: String
+    Default: dev
     Description: ARN of the ECR image for HGAJOBS
 
 Resources:
