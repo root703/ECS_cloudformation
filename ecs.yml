@@ -135,8 +135,8 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
-      Certificates:
-        - CertificateArn: <PROPER_CERTIFICATE_ARN>
+      #Certificates:
+      #  - CertificateArn: <PROPER_CERTIFICATE_ARN>
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -174,7 +174,7 @@ Resources:
   LaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: ami-xxxxxxxxxxxxxxxxx
+      ImageId: ami-053b0d53c279acc90
       InstanceType: t2.micro
       SecurityGroups:
         - !Ref InstanceSecurityGroup
@@ -292,7 +292,7 @@ Resources:
           - ECS Task State Change
       Targets:
         - Id: MyTarget
-          Arn: <ARN_OF_EVENT_TARGET>
+     #     Arn: <ARN_OF_EVENT_TARGET>
 
   CloudWatchAlarm:
     Type: AWS::CloudWatch::Alarm
