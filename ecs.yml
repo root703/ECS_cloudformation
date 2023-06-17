@@ -130,7 +130,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref LoadBalancer
-      Protocol: HTTPS
+      Protocol: HTTP
       Port: 443
       DefaultActions:
         - Type: forward
