@@ -38,7 +38,7 @@ Resources:
         - Key: Name
           Value: MyVPC
 
- SubnetA:
+  SubnetA:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
@@ -48,7 +48,7 @@ Resources:
        - Key: Name
          Value: PublicSubnetA
 
- SubnetB:
+  SubnetB:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
