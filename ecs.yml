@@ -38,25 +38,25 @@ Resources:
         - Key: Name
           Value: MyVPC
 
-  SubnetA:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: us-east-1a
-      CidrBlock: 10.0.0.0/24
-      Tags:
-        - Key: Name
-          Value: PublicSubnetA
+ # SubnetA:
+ #   Type: AWS::EC2::Subnet
+ #   Properties:
+ #   VpcId: !Ref VPC
+ #    AvailabilityZone: us-east-1a
+ #    CidrBlock: 10.0.0.0/24
+ #    Tags:
+ #     - Key: Name
+ #        Value: PublicSubnetA
 
-  SubnetB:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: us-east-1b
-      CidrBlock: 10.0.1.0/24
-      Tags:
-        - Key: Name
-          Value: PublicSubnetB
+ # SubnetB:
+ #   Type: AWS::EC2::Subnet
+ #   Properties:
+ #     VpcId: !Ref VPC
+ #     AvailabilityZone: us-east-1b
+ #     CidrBlock: 10.0.1.0/24
+ #     Tags:
+ #       - Key: Name
+ #         Value: PublicSubnetB
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
