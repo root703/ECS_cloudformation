@@ -292,7 +292,7 @@ Resources:
           - ECS Task State Change
       Targets:
         - Id: MyTarget
-          Arn: arn:aws:events:us-east-1:716716142707:event-bus/default
+          Arn: arn:aws:events:us-east-1:716716142707:event-bus/my
 
   CloudWatchAlarm:
     Type: AWS::CloudWatch::Alarm
