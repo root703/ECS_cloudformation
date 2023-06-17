@@ -326,7 +326,7 @@ Resources:
       TargetTrackingConfiguration:
         TargetValue: 70
         PredefinedMetricSpecification:
-          PredefinedMetricType: ECSServiceAverageCPUUtilization
+          PredefinedMetricType: ASGAverageCPUUtilization
 
   SplunkLogging:
     Type: AWS::Logs::LogGroup
