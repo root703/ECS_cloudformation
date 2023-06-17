@@ -293,6 +293,7 @@ Resources:
       Targets:
         - Id: MyTarget
           Arn: arn:aws:events:us-east-1:716716142707:event-bus/my
+          RoleArn: arn:aws:iam::716716142707:role/CloudFormation
 
   CloudWatchAlarm:
     Type: AWS::CloudWatch::Alarm
