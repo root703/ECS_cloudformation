@@ -1,0 +1,356 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, test, prod]
+    Description: Environment name (dev, test, prod)
+  ClusterName:
+    Type: String
+    Default: prod
+    Description: Name of the ECS cluster
+  TaskDefinitionName:
+    Type: String
+    Default: prod
+    Description: Name of the ECS task definition
+  ServiceName:
+    Type: String
+    Default: prod
+    Description: Name of the ECS service
+  ContainerName:
+    Type: String
+    Default: prod
+    Description: Name of the container
+  ECRImageArn:
+    Type: String
+    Default: prod
+    Description: ARN of the ECR image for HGAJOBS
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MyVPC
+
+  SubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: us-east-1a
+      CidrBlock: 10.0.0.0/24
+      Tags:
+       - Key: Name
+         Value: PublicSubnetA
+
+  SubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: us-east-1b
+      CidrBlock: 10.0.1.0/24
+      Tags:
+        - Key: Name
+          Value: PublicSubnetB
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MyInternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: PublicRouteTable
+
+  Route:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetA
+      RouteTableId: !Ref RouteTable
+
+  SubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetB
+      RouteTableId: !Ref RouteTable
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Load Balancer Security Group
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: LoadBalancerSecurityGroup
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: MyLoadBalancer
+      Subnets:
+        - !Ref SubnetA
+        - !Ref SubnetB
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: MyLoadBalancer
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Protocol: HTTP
+      Port: 443
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      #Certificates:
+      #  - CertificateArn: <PROPER_CERTIFICATE_ARN>
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: MyTargetGroup
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: Name
+          Value: MyTargetGroup
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      MinSize: 2
+      MaxSize: 5
+      DesiredCapacity: 2
+      VPCZoneIdentifier:
+        - !Ref SubnetA
+        - !Ref SubnetB
+      Tags:
+        - Key: Name
+          Value: MyAutoScalingGroup
+          PropagateAtLaunch: true
+
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-053b0d53c279acc90
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      IamInstanceProfile: !Ref InstanceProfile
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          echo ECS_CLUSTER=MyEcsCluster >> /etc/ecs/ecs.config
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Instance Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref TaskRole
+
+  EFSFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      FileSystemTags:
+        - Key: Name
+          Value: MyEFS
+
+  EFSMountTargetA:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SubnetId: !Ref SubnetA
+      SecurityGroups:
+        - !Ref EFSMountTargetSecurityGroup
+
+  EFSMountTargetB:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SubnetId: !Ref SubnetB
+      SecurityGroups:
+        - !Ref EFSMountTargetSecurityGroup
+
+  EFSMountTargetSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS Mount Target Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref InstanceSecurityGroup
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: TaskRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  ParameterStoreKey1:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /parameter/store/key1
+      Type: String
+      Value: "value1"
+
+  ParameterStoreKey2:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /parameter/store/key2
+      Type: String
+      Value: "value2"
+
+  ContainerInsights:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  EventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: MyEventBridgeRule
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type:
+          - ECS Task State Change
+      Targets:
+        - Id: MyTarget
+          Arn: arn:aws:events:us-east-1:716716142707:event-bus/my
+          RoleArn: arn:aws:iam::716716142707:role/CloudFormation
+
+  CloudWatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyCloudWatchAlarm
+      AlarmDescription: ECS Alarm
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Period: 60
+      Statistic: Average
+      Threshold: 80
+      AlarmActions:
+        - !Ref SnsTopic
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+
+  SnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: MySNSTopic
+
+  AutoScalingScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        TargetValue: 70
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+
+  SplunkLogging:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: MySplunkLogging
+      RetentionInDays: 30
+
+Outputs:
+  LoadBalancerDNSName:
+    Description: DNS name of the load balancer
+    Value: !GetAtt LoadBalancer.DNSName
+
+  EFSFileSystemId:
+    Description: ID of the EFS file system
+    Value: !Ref EFSFileSystem
+
+  ParameterStoreARN1:
+    Description: ARN of SSM parameter store key1
+    Value: !Ref ParameterStoreKey1
+
+  ParameterStoreARN2:
+    Description: ARN of SSM parameter store key2
+    Value: !Ref ParameterStoreKey2
+
+  SplunkLogGroupName:
+    Description: Name of the Splunk log group
+    Value: !Ref SplunkLogging
