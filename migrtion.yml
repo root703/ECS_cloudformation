@@ -9,22 +9,27 @@ Parameters:
   ClusterName:
     Type: String
     Default: prod
+    AllowedValues: [dev, test, prod]
     Description: Name of the ECS cluster
   TaskDefinitionName:
     Type: String
     Default: prod
+    AllowedValues: [dev, test, prod]
     Description: Name of the ECS task definition
   ServiceName:
     Type: String
     Default: prod
+    AllowedValues: [dev, test, prod]
     Description: Name of the ECS service
   ContainerName:
     Type: String
     Default: prod
+    AllowedValues: [dev, test, prod]
     Description: Name of the container
   ECRImageArn:
     Type: String
     Default: prod
+    AllowedValues: [dev, test, prod]
     Description: ARN of the ECR image for HGAJOBS
 
 Resources:
